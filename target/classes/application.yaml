@@ -1,0 +1,53 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: unified-backend
+  servlet:
+    multipart:
+      max-file-size: ${CHAT_MAX_FILE_SIZE:50MB}
+      max-request-size: ${CHAT_MAX_REQUEST_SIZE:50MB}
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb+srv://anmol:Mehla%406228@chat-service.3pp23dc.mongodb.net/coupon_voucher?authSource=admin&appName=Chat-Service}
+      database: ${MONGODB_DATABASE:coupon_voucher}
+      auto-index-creation: ${MONGODB_AUTO_INDEX_CREATION:true}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    listener:
+      auto-startup: ${KAFKA_LISTENER_AUTO_STARTUP:false}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: coupon-voucher-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:SuperLongHardcodedSecretKeySuperLongHardcodedSecretKeySuperLongHardcodedSecretKey1234567890}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  cors:
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:*}
+  admin:
+    user-ids: ${ADMIN_USER_IDS:1}
+  chat-media:
+    directory: ${CHAT_MEDIA_DIRECTORY:uploads/chat}
+    public-base-url: ${CHAT_MEDIA_PUBLIC_BASE_URL:/uploads/chat}
+  kafka:
+    topics:
+      coupon-create: ${KAFKA_COUPON_CREATE_TOPIC:coupon.create.requests}
+  coupon-feed:
+    enabled: ${COUPON_FEED_ENABLED:false}
+    url: ${COUPON_FEED_URL:}
+    fixed-delay-ms: ${COUPON_FEED_FIXED_DELAY_MS:300000}
+    initial-delay-ms: ${COUPON_FEED_INITIAL_DELAY_MS:10000}
+    max-dedupe-keys: ${COUPON_FEED_MAX_DEDUPE_KEYS:10000}
+    default-seller-id: ${COUPON_FEED_DEFAULT_SELLER_ID:0}
+    priceyuge-api-key: ${PRICEYUGE_API_KEY:}
+    priceyuge-api-version: ${PRICEYUGE_API_VERSION:v1}
+    priceyuge-store-tag: ${PRICEYUGE_STORE_TAG:}
+    priceyuge-category-tag: ${PRICEYUGE_CATEGORY_TAG:}

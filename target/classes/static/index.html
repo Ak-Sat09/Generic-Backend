@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Realtime Blog Editor</title>
+</head>
+<body>
+
+<h2>Realtime Blog Editor</h2>
+
+<div id="blogsContainer"></div>
+
+<br>
+
+<input id="title" placeholder="Title" style="width:400px"><br><br>
+<textarea id="content" rows="6" cols="60"></textarea>
+<br><br>
+
+<button onclick="save()">Save</button>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+<script>
+
+const BASE_URL = "http://localhost:8080";
+const TOKEN = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhbm1vbG1laGxhMUBnbWFpbC5jb20iLCJ1c2VySWQiOiIxIiwiaWF0IjoxNzcxODA4OTg2LCJleHAiOjE3NzE4OTUzODZ9.fCXGmnspltQMlswxe5SUVX9ctxmj6d7T1xOJgrFv-BxuCX_O4fslfBbmDCf1UVqpVi9pExvUynWALqXoCtEu0w";
+
+let stompClient = null;
+let currentBlogId = null;
+let subscription = null;
+
+window.onload = function () {
+    loadAllBlogs();
+};
+
+async function loadAllBlogs() {
+
+    const response = await fetch(BASE_URL + "/blogs");
+    const blogs = await response.json();
+
+    const container = document.getElementById("blogsContainer");
+    container.innerHTML = "";
+
+    blogs.forEach(blog => {
+
+        const button = document.createElement("button");
+        button.innerText = blog.title;
+
+        button.onclick = function () {
+            openBlog(blog.id);
+        };
+
+        container.appendChild(button);
+        container.appendChild(document.createElement("br"));
+    });
+}
+
+async function openBlog(id) {
+
+    currentBlogId = id;
+
+    const response = await fetch(BASE_URL + "/blogs/" + id);
+    const blog = await response.json();
+
+    document.getElementById("title").value = blog.title;
+    document.getElementById("content").value = blog.content;
+
+    if (!stompClient) {
+        await connectSocket();
+    }
+
+    subscribeToBlog(id);
+}
+
+function connectSocket() {
+
+    return new Promise((resolve) => {
+
+        const socket = new SockJS(BASE_URL + "/ws");
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function () {
+            console.log("WebSocket Connected");
+            resolve();
+        });
+    });
+}
+
+function subscribeToBlog(blogId) {
+
+    if (subscription) {
+        subscription.unsubscribe();
+    }
+
+    subscription = stompClient.subscribe(
+        "/topic/blog/" + blogId,
+        function (message) {
+
+            const blog = JSON.parse(message.body);
+
+            document.getElementById("title").value = blog.title;
+            document.getElementById("content").value = blog.content;
+
+            console.log("Realtime update received");
+        }
+    );
+}
+
+function save() {
+
+    const updatedTitle = document.getElementById("title").value;
+    const updatedContent = document.getElementById("content").value;
+
+    stompClient.send(
+        "/app/edit-blog",
+        {},
+        JSON.stringify({
+            id: currentBlogId,
+            title: updatedTitle,
+            content: updatedContent
+        })
+    );
+}
+
+</script>
+
+</body>
+</html>
