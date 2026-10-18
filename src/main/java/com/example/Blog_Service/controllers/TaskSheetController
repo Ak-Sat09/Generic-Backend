@@ -1,0 +1,219 @@
+package com.example.Blog_Service.controllers;
+
+import com.example.CouponVoucherService.common.ApiResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+/**
+ * Serves the "Internship Tasks" page from MongoDB.
+ *
+ * Everything lives in this one file:
+ *  - TaskSheetController : GET /api/tasks[?group=...]
+ *  - TaskDocument        : Mongo document (collection "TaskSheet")
+ *  - TaskResponse        : API shape returned to the React app
+ *  - TaskSeeder          : inserts the 8 tasks once, only if the collection is empty
+ *
+ * MongoTemplate is used instead of a repository interface because Spring Data does not
+ * pick up nested repository interfaces by default, and this must stay a single file.
+ *
+ * Response is wrapped in the project's ApiResponse: { success, code, message, data }.
+ * To disable seeding, set app.tasks.seed=false.
+ */
+@RestController
+@RequestMapping("/api/tasks")
+@RequiredArgsConstructor
+@CrossOrigin(originPatterns = "${app.cors.allowed-origin-patterns:*}")
+public class TaskSheetController {
+
+    static final String COLLECTION = "TaskSheet";
+
+    private final MongoTemplate mongoTemplate;
+
+    @GetMapping
+    public ApiResponse<List<TaskResponse>> getTasks(@RequestParam(required = false) String group) {
+        Query query = new Query().with(Sort.by(Sort.Direction.ASC, "displayOrder"));
+        if (group != null && !group.isBlank()) {
+            query.addCriteria(Criteria.where("group").is(group.trim()));
+        }
+        List<TaskResponse> tasks = mongoTemplate.find(query, TaskDocument.class).stream()
+                .map(TaskResponse::from)
+                .toList();
+        return ApiResponse.success(tasks);
+    }
+
+    /* ----------------------------- Persistence model ----------------------------- */
+
+    @Document(collection = COLLECTION)
+    public record TaskDocument(
+            @Id String id,
+            int displayOrder,
+            String title,
+            String project,
+            String group,
+            List<String> problem,
+            List<String> did,
+            List<String> learned,
+            String blogUrl,
+            String projectUrl) {
+    }
+
+    /* ------------------------------- API response -------------------------------- */
+
+    public record TaskResponse(
+            String id,
+            int displayOrder,
+            String title,
+            String project,
+            String group,
+            List<String> problem,
+            List<String> did,
+            List<String> learned,
+            String blogUrl,
+            String projectUrl) {
+
+        static TaskResponse from(TaskDocument d) {
+            return new TaskResponse(d.id(), d.displayOrder(), d.title(), d.project(), d.group(),
+                    d.problem(), d.did(), d.learned(), d.blogUrl(), d.projectUrl());
+        }
+    }
+
+    /* ---------------------------------- Seeding ---------------------------------- */
+
+    @Slf4j
+    @Component
+    @RequiredArgsConstructor
+    @ConditionalOnProperty(name = "app.tasks.seed", havingValue = "true", matchIfMissing = true)
+    static class TaskSeeder implements ApplicationRunner {
+
+        private final MongoTemplate mongoTemplate;
+
+        @Override
+        public void run(ApplicationArguments args) {
+            if (mongoTemplate.exists(new Query(), TaskDocument.class)) {
+                log.info("Collection '{}' already has data, skipping seed", COLLECTION);
+                return;
+            }
+            List<TaskDocument> seed = seedData();
+            mongoTemplate.insertAll(seed);
+            log.info("Seeded {} tasks into '{}'", seed.size(), COLLECTION);
+        }
+
+        private static TaskDocument task(int order, String title, String project, String group,
+                                         List<String> problem, List<String> did, List<String> learned,
+                                         String blogUrl, String projectUrl) {
+            return new TaskDocument("t" + order, order, title, project, group,
+                    problem, did, learned, blogUrl, projectUrl);
+        }
+
+        // Blog and project links are placeholders. Update them directly in MongoDB.
+        private static List<TaskDocument> seedData() {
+            return List.of(
+                task(1, "Fix Duplicate Watchlists", "User Preference", "User Preference",
+                    List.of(
+                        "Due to a concurrency issue, sometimes multiple default watchlists were created for the same user. Ideally, every user should have only one default watchlist.",
+                        "Because of this, stocks were sometimes added to one watchlist while another empty watchlist was returned to the user."),
+                    List.of(
+                        "I created a cleanup job to find duplicate watchlists. I merged the stocks into a single watchlist and removed the duplicate data. The latest updated watchlist was considered while merging the records."),
+                    List.of("Concurrency issues", "MongoDB data handling", "Cron jobs", "Data cleanup"),
+                    "https://example.com/blog/duplicate-watchlists",
+                    "https://example.com/project/user-preference"),
+
+                task(2, "Fix Missing Stock Prices", "User Preference", "User Preference",
+                    List.of(
+                        "When a user adds a stock to the watchlist, we call the Market team's API to get the stock price.",
+                        "Sometimes this API fails or returns a 404 response. Because of this, some stocks were saved without price information."),
+                    List.of(
+                        "I created a cron job that finds stocks with missing prices. It calls the Market API again and updates the price when the data is available."),
+                    List.of("External APIs", "Failure handling", "Cron jobs", "Data recovery"),
+                    "https://example.com/blog/missing-stock-prices",
+                    "https://example.com/project/user-preference"),
+
+                task(3, "Support Multiple Watchlists", "User Preference", "User Preference",
+                    List.of(
+                        "Earlier, a user could have only one default watchlist. Later, we introduced a feature where users could create multiple watchlists with their own names.",
+                        "The existing code was designed only for the default watchlist, so it was difficult to extend."),
+                    List.of(
+                        "I changed the existing design so that it could support both default and user-created watchlists. I made the code reusable and easier to extend for future watchlist types.",
+                        "I also used SOLID principles and design patterns while restructuring the code."),
+                    List.of("Java design", "SOLID principles", "Design patterns", "Extendable code"),
+                    "https://example.com/blog/multiple-watchlists",
+                    "https://example.com/project/user-preference"),
+
+                task(4, "UID API Performance Improvement", "User Preference", "User Preference",
+                    List.of(
+                        "We had an API that checks whether a UID already exists for a user in the SQL database.",
+                        "As the database became larger, the query became slow. This increased API response time and sometimes caused timeout issues."),
+                    List.of(
+                        "I investigated the slow query and found that the required composite index was missing.",
+                        "I added the composite index to improve the database query. I also integrated Redis caching to reduce unnecessary database calls and improve API performance."),
+                    List.of("SQL query optimization", "Composite indexes", "Redis caching", "API latency", "Debugging"),
+                    "https://example.com/blog/uid-api-performance",
+                    "https://example.com/project/user-preference"),
+
+                task(5, "Failed Email Retry System", "Unified Mailer Platform", "Unified Mailer",
+                    List.of(
+                        "Our email platform sends millions of emails. Some emails can fail during processing and need to be retried."),
+                    List.of(
+                        "I created a retry mechanism for failed emails.",
+                        "Failed emails were tracked separately and picked up again by a scheduled job. Redis and Kafka were used to push them back for processing.",
+                        "Each failed email could be retried up to 3 times. After the retry limit was reached, it was moved to the dead-letter flow instead of retrying forever."),
+                    List.of("Kafka", "Redis", "Cron jobs", "Retry mechanisms", "Failure handling", "Dead-letter queues"),
+                    "https://example.com/blog/email-retry-system",
+                    "https://example.com/project/unified-mailer"),
+
+                task(6, "Handling Multiple Large Email Jobs", "Unified Mailer", "Unified Mailer",
+                    List.of(
+                        "Our platform can send very large email campaigns. Sometimes multiple campaigns were running at the same time.",
+                        "Under heavy load, one campaign could get paused while another campaign started processing. This sometimes caused campaigns to appear stuck."),
+                    List.of(
+                        "I added tracking for paused email jobs. We maintained information about which job was paused and how many times it was paused.",
+                        "This helped us understand and manage large email campaigns more reliably."),
+                    List.of("Kafka", "Large-scale processing", "Job management", "Debugging", "Production issues"),
+                    "https://example.com/blog/large-email-jobs",
+                    "https://example.com/project/unified-mailer"),
+
+                task(7, "Make Offer Engine Support Multiple Projects", "Offer Engine", "Offer Engine",
+                    List.of(
+                        "The Offer Engine was originally developed for only one project.",
+                        "Later, other projects also needed to use the same Offer Engine, but the existing code was not designed for this."),
+                    List.of(
+                        "I changed the architecture so the same system could support multiple projects.",
+                        "This required changes in different parts of the application, including project-type filtering, Redis keys, Kafka messages, DTOs, and database-related logic.",
+                        "The application was a large multi-module project, so the changes had to work correctly across different modules."),
+                    List.of("Java", "Multi-module projects", "Kafka", "Redis", "DTO design", "Extendable architecture"),
+                    "https://example.com/blog/offer-engine-multi-project",
+                    "https://example.com/project/offer-engine"),
+
+                task(8, "Form Drop-Off Email, SMS and WhatsApp", "Centralized Data API", "Centralized Data API",
+                    List.of(
+                        "Users sometimes start a registration form but leave it without completing all the steps.",
+                        "We needed to identify where the user stopped and send a reminder based on that step."),
+                    List.of(
+                        "I worked on a system that tracks the user's current form stage. For example, if a user completed login but did not complete basic details, the system could send a reminder.",
+                        "Depending on the project, reminders could be sent through Email, SMS, or WhatsApp.",
+                        "I designed the implementation so it could be reused for multiple projects with different form fields and requirements."),
+                    List.of("Email", "SMS", "WhatsApp", "Scheduled jobs", "User journey tracking",
+                            "Reusable design", "Multi-project support"),
+                    "https://example.com/blog/form-drop-off",
+                    "https://example.com/project/centralized-data-api")
+            );
+        }
+    }
+}
