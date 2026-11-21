@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: unified-backend
+  autoconfigure:
+    # Spring Security is only used by the Buy Together module, which has its own login
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   servlet:
     multipart:
       max-file-size: ${CHAT_MAX_FILE_SIZE:50MB}
@@ -51,3 +54,34 @@ app:
     priceyuge-api-version: ${PRICEYUGE_API_VERSION:v1}
     priceyuge-store-tag: ${PRICEYUGE_STORE_TAG:}
     priceyuge-category-tag: ${PRICEYUGE_CATEGORY_TAG:}
+
+# Buy Together module (com.buytogether). Every endpoint is served under /buy-together
+buy-together:
+  api-prefix: /buy-together
+  jwt:
+    # TEMPORARY test default, set BT_JWT_SECRET on the server before going live
+    secret: ${BT_JWT_SECRET:buy-together-test-secret-key-change-me-before-live}
+    ttl: ${BT_JWT_TTL:7d}
+    issuer: buy-together
+  otp:
+    length: 6
+    ttl: 5m
+    resend-cooldown: 60s
+    max-attempts: 5
+    sender: ${BT_OTP_SENDER:log}
+  groups:
+    min-size: 2
+    max-size: 50
+    max-open-per-user: 3
+    max-deadline-days: 90
+    purge-after-days: 30
+    maintenance-cron: "0 5 0 * * *"
+  cache:
+    group:
+      max-size: 5000
+      ttl: 10m
+    search:
+      max-size: 500
+      ttl: 30s
+  cors:
+    allowed-origins: ${BT_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,https://*.vercel.app}

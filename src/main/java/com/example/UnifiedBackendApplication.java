@@ -5,10 +5,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
  * The single application entry point for all backend features.
- * Component scanning starts at com.example so the existing user, blog,
- * coupon, and chat packages are loaded into the same Spring context.
+ * Component scanning covers com.example (user, blog, coupon and chat) and
+ * com.buytogether (the Buy Together module, served under /buy-together).
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.example", "com.buytogether"})
 public class UnifiedBackendApplication {
 
     public static void main(String[] args) {
