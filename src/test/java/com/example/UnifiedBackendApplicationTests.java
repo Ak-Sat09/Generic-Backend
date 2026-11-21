@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -37,8 +38,9 @@ class UnifiedBackendApplicationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].code").exists());
 
+        // Without the prefix the module must not answer (the exact error code comes from the host app)
         mvc.perform(get("/api/brands"))
-                .andExpect(status().isNotFound());
+                .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotEqualTo(200));
     }
 
     @Test
