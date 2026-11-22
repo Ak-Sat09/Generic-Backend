@@ -55,7 +55,13 @@ public class OtpService {
 
         String code = generator.generate(properties.length());
         pending.put(phone.value(), new PendingOtp(hash(phone, code), now, new AtomicInteger()));
-        sender.send(phone, code);
+        try {
+            sender.send(phone, code);
+        } catch (OtpDeliveryException e) {
+            // let the user try again straight away instead of waiting out the cooldown
+            pending.invalidate(phone.value());
+            throw new BusinessException(ErrorCode.OTP_DELIVERY_FAILED);
+        }
         return new OtpChallenge(properties.ttl().toSeconds(), properties.resendCooldown().toSeconds());
     }
 

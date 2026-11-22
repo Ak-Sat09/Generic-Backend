@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -92,6 +93,19 @@ class OtpServiceTest {
 
         assertThat(challenge.expiresInSeconds()).isEqualTo(300);
         assertThat(challenge.resendAfterSeconds()).isEqualTo(60);
+    }
+
+    @Test
+    void failedDeliveryAllowsImmediateRetry() {
+        doThrow(new OtpDeliveryException(new RuntimeException("gateway down")))
+                .doNothing()
+                .when(sender).send(eq(PHONE), anyString());
+
+        assertError(() -> otpService.send(PHONE), ErrorCode.OTP_DELIVERY_FAILED);
+        assertError(() -> otpService.verify(PHONE, "123456"), ErrorCode.OTP_EXPIRED);
+
+        assertThatCode(() -> otpService.send(PHONE)).doesNotThrowAnyException();
+        assertThatCode(() -> otpService.verify(PHONE, "654321")).doesNotThrowAnyException();
     }
 
     private static void assertError(ThrowingCallable call, ErrorCode expected) {

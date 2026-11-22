@@ -14,6 +14,7 @@ public enum ErrorCode {
     OTP_EXPIRED(HttpStatus.BAD_REQUEST, "OTP expired or was never sent, request a new one"),
     OTP_INVALID(HttpStatus.UNAUTHORIZED, "Wrong OTP"),
     OTP_TOO_MANY_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS, "Too many wrong attempts, request a new OTP"),
+    OTP_DELIVERY_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "Could not send the OTP right now, try again"),
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User not found"),
 

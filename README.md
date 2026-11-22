@@ -38,7 +38,10 @@ The backend listens on `http://localhost:8080` by default. Set `SERVER_PORT`, `S
 | `JWT_SECRET` | users, blog, coupons | Signing secret for their tokens |
 | `BT_JWT_SECRET` | Buy Together | Signing secret for Buy Together tokens, at least 32 characters |
 | `BT_CORS_ALLOWED_ORIGINS` | Buy Together | Allowed frontend origins (default: localhost and `https://*.vercel.app`) |
-| `BT_OTP_SENDER` | Buy Together | `log` prints OTPs to the server log (development) |
+| `BT_OTP_SENDER` | Buy Together | `log` prints OTPs to the server log; `twilio` sends a real SMS |
+| `BT_TWILIO_ACCOUNT_SID` | Buy Together | Twilio account SID, needed with `twilio` |
+| `BT_TWILIO_AUTH_TOKEN` | Buy Together | Twilio auth token, needed with `twilio` |
+| `BT_TWILIO_FROM_NUMBER` | Buy Together | Twilio phone number, e.g. `+15551234567` |
 
 ## Build and tests
 

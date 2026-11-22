@@ -68,7 +68,12 @@ buy-together:
     ttl: 5m
     resend-cooldown: 60s
     max-attempts: 5
+    # log = print the OTP in the server log, twilio = send a real SMS
     sender: ${BT_OTP_SENDER:log}
+    twilio:
+      account-sid: ${BT_TWILIO_ACCOUNT_SID:}
+      auth-token: ${BT_TWILIO_AUTH_TOKEN:}
+      from-number: ${BT_TWILIO_FROM_NUMBER:}
   groups:
     min-size: 2
     max-size: 50
