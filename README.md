@@ -19,6 +19,7 @@ How it fits in without affecting the other modules:
 - **Security limited to its paths.** It uses Spring Security with phone OTP login and its own JWT. The security chain only matches `/buy-together/**`, so the blog, coupon and user endpoints work exactly as before.
 - **Separate settings.** Everything is under `buy-together:` in `application.yaml`, with its own JWT secret (`BT_JWT_SECRET`).
 - **Its own error format.** Its error handler only covers `com.buytogether`, so Buy Together errors keep their `problem+json` format, and the coupon error handler is unchanged.
+- **Copied without its main class.** When syncing code from the `buy-together` repo, copy `src/main/java/com/buytogether` but leave out `BuyTogetherApplication.java`. A second main class stops the jar from being built.
 - **Separate collections.** Data lives in the same MongoDB database, in collections that all start with `bt_`: `bt_users`, `bt_groups`, `bt_group_members`, `bt_group_messages` and `bt_group_reports`. The prefix keeps them clear of older collections. For example, an existing `users` collection has a unique email index that Buy Together's phone-only users would break.
 
 Frontend: [buy-together-frontend](https://github.com/Ak-Sat09/buy-together-frontend). Point its `VITE_API_URL` at `https://<this server>/buy-together`.
