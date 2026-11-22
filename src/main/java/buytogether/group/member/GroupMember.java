@@ -12,7 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
-@Document("group_members")
+@Document("bt_group_members")
 @CompoundIndexes({
         @CompoundIndex(name = "group_user_uq", def = "{'groupId': 1, 'userId': 1}", unique = true),
         @CompoundIndex(name = "user_joined_idx", def = "{'userId': 1, 'joinedAt': -1}"),

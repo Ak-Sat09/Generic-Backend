@@ -11,7 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
-@Document("group_messages")
+@Document("bt_group_messages")
 @CompoundIndex(name = "group_sent_idx", def = "{'groupId': 1, 'sentAt': -1}")
 @Getter
 @Builder

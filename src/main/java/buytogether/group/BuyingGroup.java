@@ -18,7 +18,7 @@ import java.time.LocalDate;
  * changed through atomic updates in {@link GroupRepositoryCustom}, never by saving this
  * object, so concurrent joins cannot overwrite each other.
  */
-@Document("groups")
+@Document("bt_groups")
 @CompoundIndexes({
         @CompoundIndex(name = "browse_idx", def = "{'status': 1, 'cityKey': 1, 'brand': 1, 'createdAt': -1}"),
         @CompoundIndex(name = "creator_idx", def = "{'creatorId': 1, 'status': 1}"),
