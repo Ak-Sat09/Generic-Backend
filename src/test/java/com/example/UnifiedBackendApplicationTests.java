@@ -56,4 +56,18 @@ class UnifiedBackendApplicationTests {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_PHONE"));
     }
+
+    @Test
+    void buyTogetherEmailLoginIsReachable() throws Exception {
+        mvc.perform(post("/buy-together/api/auth/email/send").contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"not-an-email\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_EMAIL"));
+    }
+
+    @Test
+    void buyTogetherGoogleLoginIsOffWithoutClientId() throws Exception {
+        mvc.perform(post("/buy-together/api/auth/google").contentType(MediaType.APPLICATION_JSON).content("{\"credential\":\"x\"}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("GOOGLE_LOGIN_DISABLED"));
+    }
 }

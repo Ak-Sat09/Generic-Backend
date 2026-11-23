@@ -17,7 +17,6 @@ import java.util.Optional;
 public class JwtService {
 
     private static final int MIN_SECRET_BYTES = 32;
-    private static final String PHONE_CLAIM = "phone";
 
     private final JwtProperties properties;
     private final SecretKey key;
@@ -39,7 +38,6 @@ public class JwtService {
         String token = Jwts.builder()
                 .issuer(properties.issuer())
                 .subject(user.id())
-                .claim(PHONE_CLAIM, user.phone())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .signWith(key)
@@ -56,7 +54,7 @@ public class JwtService {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            return Optional.of(new AuthUser(claims.getSubject(), claims.get(PHONE_CLAIM, String.class)));
+            return Optional.of(new AuthUser(claims.getSubject()));
         } catch (JwtException | IllegalArgumentException e) {
             return Optional.empty();
         }

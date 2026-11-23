@@ -1,5 +1,6 @@
 package com.buytogether.auth.otp;
 
+import com.buytogether.common.email.EmailAddress;
 import com.buytogether.common.error.BusinessException;
 import com.buytogether.common.error.ErrorCode;
 import com.buytogether.common.phone.PhoneNumber;
@@ -14,6 +15,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * Issues and checks one time passwords.
@@ -26,14 +28,17 @@ public class OtpService {
     private static final long MAX_PENDING_CODES = 100_000;
 
     private final OtpProperties properties;
-    private final OtpSender sender;
+    private final OtpSender smsSender;
+    private final EmailOtpSender emailSender;
     private final OtpCodeGenerator generator;
     private final Clock clock;
     private final Cache<String, PendingOtp> pending;
 
-    public OtpService(OtpProperties properties, OtpSender sender, OtpCodeGenerator generator, Clock clock) {
+    public OtpService(OtpProperties properties, OtpSender smsSender, EmailOtpSender emailSender,
+                      OtpCodeGenerator generator, Clock clock) {
         this.properties = properties;
-        this.sender = sender;
+        this.smsSender = smsSender;
+        this.emailSender = emailSender;
         this.generator = generator;
         this.clock = clock;
         this.pending = CacheBuilder.newBuilder()
@@ -43,8 +48,24 @@ public class OtpService {
     }
 
     public OtpChallenge send(PhoneNumber phone) {
+        return issue(phoneKey(phone), code -> smsSender.send(phone, code));
+    }
+
+    public OtpChallenge send(EmailAddress email) {
+        return issue(emailKey(email), code -> emailSender.send(email, code));
+    }
+
+    public void verify(PhoneNumber phone, String code) {
+        check(phoneKey(phone), code);
+    }
+
+    public void verify(EmailAddress email, String code) {
+        check(emailKey(email), code);
+    }
+
+    private OtpChallenge issue(String key, Consumer<String> delivery) {
         Instant now = clock.instant();
-        PendingOtp existing = pending.getIfPresent(phone.value());
+        PendingOtp existing = pending.getIfPresent(key);
         if (existing != null) {
             Duration wait = Duration.between(now, existing.sentAt().plus(properties.resendCooldown()));
             if (!wait.isNegative() && !wait.isZero()) {
@@ -54,41 +75,49 @@ public class OtpService {
         }
 
         String code = generator.generate(properties.length());
-        pending.put(phone.value(), new PendingOtp(hash(phone, code), now, new AtomicInteger()));
+        pending.put(key, new PendingOtp(hash(key, code), now, new AtomicInteger()));
         try {
-            sender.send(phone, code);
+            delivery.accept(code);
         } catch (OtpDeliveryException e) {
             // let the user try again straight away instead of waiting out the cooldown
-            pending.invalidate(phone.value());
+            pending.invalidate(key);
             throw new BusinessException(ErrorCode.OTP_DELIVERY_FAILED);
         }
         return new OtpChallenge(properties.ttl().toSeconds(), properties.resendCooldown().toSeconds());
     }
 
-    public void verify(PhoneNumber phone, String code) {
-        PendingOtp otp = pending.getIfPresent(phone.value());
+    private void check(String key, String code) {
+        PendingOtp otp = pending.getIfPresent(key);
         if (otp == null) {
             throw new BusinessException(ErrorCode.OTP_EXPIRED);
         }
         if (otp.attempts().get() >= properties.maxAttempts()) {
-            pending.invalidate(phone.value());
+            pending.invalidate(key);
             throw new BusinessException(ErrorCode.OTP_TOO_MANY_ATTEMPTS);
         }
-        if (!MessageDigest.isEqual(otp.hash(), hash(phone, code))) {
+        if (!MessageDigest.isEqual(otp.hash(), hash(key, code))) {
             int used = otp.attempts().incrementAndGet();
             if (used >= properties.maxAttempts()) {
-                pending.invalidate(phone.value());
+                pending.invalidate(key);
                 throw new BusinessException(ErrorCode.OTP_TOO_MANY_ATTEMPTS);
             }
             throw new BusinessException(ErrorCode.OTP_INVALID);
         }
-        pending.invalidate(phone.value());
+        pending.invalidate(key);
     }
 
-    private static byte[] hash(PhoneNumber phone, String code) {
+    private static String phoneKey(PhoneNumber phone) {
+        return "phone:" + phone.value();
+    }
+
+    private static String emailKey(EmailAddress email) {
+        return "email:" + email.value();
+    }
+
+    private static byte[] hash(String key, String code) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return digest.digest((phone.value() + ':' + code).getBytes(StandardCharsets.UTF_8));
+            return digest.digest((key + ':' + code).getBytes(StandardCharsets.UTF_8));
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 is not available", e);
         }

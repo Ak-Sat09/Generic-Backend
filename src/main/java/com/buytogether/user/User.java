@@ -7,7 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
@@ -23,8 +22,11 @@ public class User {
     @Id
     private String id;
 
-    @Indexed(unique = true)
+    /** Set for phone logins. Unique when present, see {@link UserIndexes}. */
     private String phone;
+
+    /** Set for email and Google logins. Unique when present, see {@link UserIndexes}. */
+    private String email;
 
     private String name;
 

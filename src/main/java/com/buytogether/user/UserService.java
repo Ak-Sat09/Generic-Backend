@@ -1,5 +1,6 @@
 package com.buytogether.user;
 
+import com.buytogether.common.email.EmailAddress;
 import com.buytogether.common.error.BusinessException;
 import com.buytogether.common.error.ErrorCode;
 import com.buytogether.common.phone.PhoneNumber;
@@ -12,7 +13,10 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,12 +27,19 @@ public class UserService {
     private final Clock clock;
 
     /**
-     * Phone login doubles as sign up: the first verified login creates the account.
+     * Every login doubles as sign up: the first verified login creates the account.
      */
     public SignInResult signIn(PhoneNumber phone, String nameOnSignUp) {
-        return users.findByPhone(phone.value())
-                .map(existing -> new SignInResult(existing, false))
-                .orElseGet(() -> register(phone, nameOnSignUp));
+        return signIn(() -> users.findByPhone(phone.value()),
+                builder -> builder.phone(phone.value()), nameOnSignUp);
+    }
+
+    /**
+     * Email OTP and Google both land here, so the same inbox always opens the same account.
+     */
+    public SignInResult signIn(EmailAddress email, String nameOnSignUp) {
+        return signIn(() -> users.findByEmail(email.value()),
+                builder -> builder.email(email.value()), nameOnSignUp);
     }
 
     public User get(String userId) {
@@ -48,19 +59,22 @@ public class UserService {
                 .collect(Collectors.toMap(User::getId, Function.identity()));
     }
 
-    private SignInResult register(PhoneNumber phone, String name) {
+    private SignInResult signIn(Supplier<Optional<User>> lookup, UnaryOperator<User.UserBuilder> identity,
+                                String nameOnSignUp) {
+        Optional<User> existing = lookup.get();
+        if (existing.isPresent()) {
+            return new SignInResult(existing.get(), false);
+        }
         Instant now = clock.instant();
-        User user = User.builder()
-                .phone(phone.value())
-                .name(Text.clean(name))
+        User user = identity.apply(User.builder())
+                .name(Text.clean(nameOnSignUp))
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
         try {
             return new SignInResult(users.save(user), true);
         } catch (DuplicateKeyException raceWithAnotherLogin) {
-            User existing = users.findByPhone(phone.value()).orElseThrow(() -> raceWithAnotherLogin);
-            return new SignInResult(existing, false);
+            return new SignInResult(lookup.get().orElseThrow(() -> raceWithAnotherLogin), false);
         }
     }
 

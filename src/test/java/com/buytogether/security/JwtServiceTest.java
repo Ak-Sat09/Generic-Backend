@@ -20,16 +20,16 @@ class JwtServiceTest {
 
     @Test
     void issuedTokenCanBeVerified() {
-        JwtService.IssuedToken issued = jwtService.issue(new AuthUser("user-1", "+919876543210"));
+        JwtService.IssuedToken issued = jwtService.issue(new AuthUser("user-1"));
 
         assertThat(issued.expiresAt()).isEqualTo(Instant.parse("2026-11-21T11:00:00Z"));
         assertThat(jwtService.verify(issued.token()))
-                .contains(new AuthUser("user-1", "+919876543210"));
+                .contains(new AuthUser("user-1"));
     }
 
     @Test
     void expiredTokenIsRejected() {
-        String token = jwtService.issue(new AuthUser("user-1", "+919876543210")).token();
+        String token = jwtService.issue(new AuthUser("user-1")).token();
         clock.advance(Duration.ofHours(2));
 
         assertThat(jwtService.verify(token)).isEmpty();
@@ -40,7 +40,7 @@ class JwtServiceTest {
         JwtService other = new JwtService(
                 new JwtProperties("another-secret-key-that-is-also-32-bytes-long", Duration.ofHours(1), "buy-together"),
                 clock);
-        String foreignToken = other.issue(new AuthUser("user-1", "+919876543210")).token();
+        String foreignToken = other.issue(new AuthUser("user-1")).token();
 
         assertThat(jwtService.verify(foreignToken)).isEmpty();
     }

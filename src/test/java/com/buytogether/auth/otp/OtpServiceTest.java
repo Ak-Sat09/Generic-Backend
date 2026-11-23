@@ -1,5 +1,6 @@
 package com.buytogether.auth.otp;
 
+import com.buytogether.common.email.EmailAddress;
 import com.buytogether.common.error.BusinessException;
 import com.buytogether.common.error.ErrorCode;
 import com.buytogether.common.phone.PhoneNumber;
@@ -28,7 +29,10 @@ class OtpServiceTest {
 
     private static final PhoneNumber PHONE = PhoneNumber.parse("9876543210");
 
+    private static final EmailAddress EMAIL = EmailAddress.parse("Anmol@Example.com");
+
     private final OtpSender sender = mock(OtpSender.class);
+    private final EmailOtpSender emailSender = mock(EmailOtpSender.class);
     private final OtpCodeGenerator generator = mock(OtpCodeGenerator.class);
     private final MutableClock clock = new MutableClock(Instant.parse("2026-11-21T10:00:00Z"), ZoneOffset.UTC);
 
@@ -37,7 +41,7 @@ class OtpServiceTest {
     @BeforeEach
     void setUp() {
         OtpProperties properties = new OtpProperties(6, Duration.ofMinutes(5), Duration.ofSeconds(60), 3, "log");
-        otpService = new OtpService(properties, sender, generator, clock);
+        otpService = new OtpService(properties, sender, emailSender, generator, clock);
         when(generator.generate(anyInt())).thenReturn("123456", "654321");
     }
 
@@ -106,6 +110,24 @@ class OtpServiceTest {
 
         assertThatCode(() -> otpService.send(PHONE)).doesNotThrowAnyException();
         assertThatCode(() -> otpService.verify(PHONE, "654321")).doesNotThrowAnyException();
+    }
+
+    @Test
+    void sendsEmailCodeAndAcceptsIt() {
+        otpService.send(EMAIL);
+
+        verify(emailSender).send(EMAIL, "123456");
+        assertThatCode(() -> otpService.verify(EMAIL, "123456")).doesNotThrowAnyException();
+    }
+
+    @Test
+    void phoneAndEmailCodesAreKeptApart() {
+        otpService.send(PHONE);
+        otpService.send(EMAIL);
+
+        assertError(() -> otpService.verify(EMAIL, "123456"), ErrorCode.OTP_INVALID);
+        assertThatCode(() -> otpService.verify(PHONE, "123456")).doesNotThrowAnyException();
+        assertThatCode(() -> otpService.verify(EMAIL, "654321")).doesNotThrowAnyException();
     }
 
     private static void assertError(ThrowingCallable call, ErrorCode expected) {

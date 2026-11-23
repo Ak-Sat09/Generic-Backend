@@ -42,6 +42,10 @@ The backend listens on `http://localhost:8080` by default. Set `SERVER_PORT`, `S
 | `BT_TWILIO_ACCOUNT_SID` | Buy Together | Twilio account SID, needed with `twilio` |
 | `BT_TWILIO_AUTH_TOKEN` | Buy Together | Twilio auth token, needed with `twilio` |
 | `BT_TWILIO_FROM_NUMBER` | Buy Together | Twilio phone number, e.g. `+15551234567` |
+| `BT_EMAIL_OTP_SENDER` | Buy Together | `log` prints email OTPs to the server log; `smtp` sends real emails |
+| `BT_MAIL_USERNAME` / `BT_MAIL_PASSWORD` | Buy Together | SMTP login (for Gmail, the address and an app password) |
+| `BT_MAIL_HOST` / `BT_MAIL_PORT` | Buy Together | SMTP server, default `smtp.gmail.com` / `587` (AWS blocks port 25) |
+| `BT_GOOGLE_CLIENT_ID` | Buy Together | OAuth client id for Google login; Google login is off while empty |
 
 ## Build and tests
 

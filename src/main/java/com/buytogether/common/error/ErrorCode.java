@@ -10,6 +10,9 @@ public enum ErrorCode {
     FORBIDDEN(HttpStatus.FORBIDDEN, "You are not allowed to do this"),
 
     INVALID_PHONE(HttpStatus.BAD_REQUEST, "Enter a valid 10 digit Indian mobile number"),
+    INVALID_EMAIL(HttpStatus.BAD_REQUEST, "Enter a valid email address"),
+    GOOGLE_LOGIN_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, "Google login is not set up"),
+    GOOGLE_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Google sign in failed, try again"),
     OTP_RESEND_TOO_SOON(HttpStatus.TOO_MANY_REQUESTS, "Please wait before asking for a new OTP"),
     OTP_EXPIRED(HttpStatus.BAD_REQUEST, "OTP expired or was never sent, request a new one"),
     OTP_INVALID(HttpStatus.UNAUTHORIZED, "Wrong OTP"),

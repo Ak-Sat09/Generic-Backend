@@ -16,6 +16,18 @@ spring:
       uri: ${SPRING_DATA_MONGODB_URI:mongodb+srv://anmol:Mehla%406228@chat-service.3pp23dc.mongodb.net/coupon_voucher?authSource=admin&appName=Chat-Service}
       database: ${MONGODB_DATABASE:coupon_voucher}
       auto-index-creation: ${MONGODB_AUTO_INDEX_CREATION:true}
+  mail:
+    # used by Buy Together email OTP; port 587 because AWS blocks 25
+    host: ${BT_MAIL_HOST:smtp.gmail.com}
+    port: ${BT_MAIL_PORT:587}
+    username: ${BT_MAIL_USERNAME:}
+    password: ${BT_MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     listener:
@@ -74,6 +86,11 @@ buy-together:
       account-sid: ${BT_TWILIO_ACCOUNT_SID:}
       auth-token: ${BT_TWILIO_AUTH_TOKEN:}
       from-number: ${BT_TWILIO_FROM_NUMBER:}
+    # log = print email OTPs in the server log, smtp = send real emails through spring.mail
+    email-sender: ${BT_EMAIL_OTP_SENDER:log}
+  google:
+    # OAuth client id from Google Cloud Console; Google login is off while empty
+    client-id: ${BT_GOOGLE_CLIENT_ID:}
   groups:
     min-size: 2
     max-size: 50
