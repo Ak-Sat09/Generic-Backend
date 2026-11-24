@@ -5,7 +5,6 @@ import jakarta.mail.FetchProfile;
 import jakarta.mail.Folder;
 import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
-import jakarta.mail.Session;
 import jakarta.mail.Store;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.search.ComparisonTerm;
@@ -51,7 +50,7 @@ class GmailMailboxReader implements MailboxReader {
         props.put("mail.imaps.connectiontimeout", "10000");
         props.put("mail.imaps.timeout", "60000");
         try {
-            Store store = Session.getInstance(props).getStore("imaps");
+            Store store = jakarta.mail.Session.getInstance(props).getStore("imaps");
             store.connect(gmail.host(), gmail.port(), gmail.username(), gmail.appPassword());
             return new GmailSession(store, gmail.username().trim().toLowerCase(Locale.ROOT));
         } catch (MessagingException e) {
