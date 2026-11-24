@@ -114,9 +114,11 @@ email-outreach:
   gmail:
     host: imap.gmail.com
     port: 993
-    username: ${EMAIL_OUTREACH_GMAIL_USERNAME:}
-    app-password: ${EMAIL_OUTREACH_GMAIL_APP_PASSWORD:}
+    # same Gmail account and app password as the email OTP sender (BT_MAIL_* on the server)
+    username: ${EMAIL_OUTREACH_GMAIL_USERNAME:${BT_MAIL_USERNAME:}}
+    app-password: ${EMAIL_OUTREACH_GMAIL_APP_PASSWORD:${BT_MAIL_PASSWORD:}}
   reply-sync:
-    enabled: ${EMAIL_OUTREACH_REPLY_SYNC_ENABLED:false}
-    cron: ${EMAIL_OUTREACH_REPLY_SYNC_CRON:0 0 2 * * *}
+    enabled: true
+    # every night at 2 AM India time
+    cron: "0 0 2 * * *"
     zone: Asia/Kolkata

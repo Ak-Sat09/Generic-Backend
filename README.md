@@ -41,7 +41,7 @@ Other details:
 
 - **Data.** It uses its own database (`email_outreach`, the same Atlas cluster), not `coupon_voucher`. It never creates contacts, and it never changes a contact that is already `RESPONDED`.
 - **Waits for the backfill.** It skips the run while `sync_state` `backfill` is `RUNNING`.
-- **Off by default.** It only runs with `EMAIL_OUTREACH_REPLY_SYNC_ENABLED=true` and Gmail credentials set.
+- **Schedule.** `email-outreach.reply-sync.enabled` and `cron` are set in `application.yaml` (on, 2 AM). If no Gmail credentials are set, the job logs an error and does nothing.
 
 ## Run
 
@@ -65,9 +65,7 @@ The backend listens on `http://localhost:8080` by default. Set `SERVER_PORT`, `S
 | `BT_MAIL_USERNAME` / `BT_MAIL_PASSWORD` | Buy Together | SMTP login (for Gmail, the address and an app password) |
 | `BT_MAIL_HOST` / `BT_MAIL_PORT` | Buy Together | SMTP server, default `smtp.gmail.com` / `587` (AWS blocks port 25) |
 | `BT_GOOGLE_CLIENT_ID` | Buy Together | OAuth client id for Google login; Google login is off while empty |
-| `EMAIL_OUTREACH_REPLY_SYNC_ENABLED` | Email outreach | `true` to run the nightly reply job (default `false`) |
-| `EMAIL_OUTREACH_GMAIL_USERNAME` / `EMAIL_OUTREACH_GMAIL_APP_PASSWORD` | Email outreach | Gmail address and app password used for IMAP |
-| `EMAIL_OUTREACH_REPLY_SYNC_CRON` | Email outreach | When the job runs, default `0 0 2 * * *` (2 AM, Asia/Kolkata) |
+| `EMAIL_OUTREACH_GMAIL_USERNAME` / `EMAIL_OUTREACH_GMAIL_APP_PASSWORD` | Email outreach | Gmail used for IMAP. If unset, falls back to `BT_MAIL_USERNAME` / `BT_MAIL_PASSWORD` (the same account) |
 | `EMAIL_OUTREACH_DB` | Email outreach | Database holding `email_contacts` and `sync_state`, default `email_outreach` |
 
 ## Build and tests
