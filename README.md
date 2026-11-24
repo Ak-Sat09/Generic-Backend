@@ -8,6 +8,7 @@ This is the single Spring Boot backend for all the apps. Each one is built as a 
 | Blog: blogs, comments, likes, live editing | `com.example.Blog_Service` | `/blogs`, `/comments`, `/likes`, `/share`, WebSocket `/ws` |
 | Coupons: seller and admin workflows, chat | `com.example.CouponVoucherService` | `/api/seller`, `/api/coupons`, `/api/coupon-requests`, `/api/chats`, `/api/admin` |
 | Buy Together: car buyers forming groups | `com.buytogether` | everything under `/buy-together` |
+| Email outreach: nightly reply tracking | `com.example.emailoutreach` | no endpoints, a scheduled job |
 
 ## Buy Together module
 
@@ -23,6 +24,24 @@ How it fits in without affecting the other modules:
 - **Separate collections.** Data lives in the same MongoDB database, in collections that all start with `bt_`: `bt_users`, `bt_groups`, `bt_group_members`, `bt_group_messages` and `bt_group_reports`. The prefix keeps them clear of older collections. For example, an existing `users` collection has a unique email index that Buy Together's phone-only users would break.
 
 Frontend: [buy-together-frontend](https://github.com/Ak-Sat09/buy-together-frontend). Point its `VITE_API_URL` at `https://<this server>/buy-together`.
+
+## Email outreach module
+
+Tracks replies to job-application emails. The contact list (`email_contacts`) was filled once by a backfill that ran locally. This module only adds the nightly job that keeps reply status up to date.
+
+**What the job does, every night at 2 AM (Asia/Kolkata):**
+
+1. Connects to Gmail over IMAP, read-only and headers only. Mail bodies and attachments are never downloaded, and nothing in the mailbox changes.
+2. Reads **All Mail** and **Bin** from the last successful run (the last 24 hours on the first run). All Mail includes the inbox and archived mail. Folders are found by their IMAP special-use flag, so a Gmail account in any language works ("Bin" or "Trash").
+3. Ignores your own mail, bounces (`mailer-daemon`, `no-reply`) and automatic replies (out-of-office, detected through `Auto-Submitted`, `X-Autoreply` and `Precedence` headers, plus common subjects).
+4. A reply from a known contact marks them `RESPONDED`, with `respondedAt` set to the first reply. If someone else at the company answers (for example, you wrote to `hr@tcs.com` and `priya@tcs.com` replied), the `In-Reply-To` header leads back to your original mail, and the person you wrote to is marked.
+5. Saves the result in `sync_state` (`_id: "reply-sync"`: `lastSuccessAt`, `lastScanned`, `lastMarked`, `lastError`). If a night is missed, the next run starts from the last success, so nothing is skipped.
+
+Other details:
+
+- **Data.** It uses its own database (`email_outreach`, the same Atlas cluster), not `coupon_voucher`. It never creates contacts, and it never changes a contact that is already `RESPONDED`.
+- **Waits for the backfill.** It skips the run while `sync_state` `backfill` is `RUNNING`.
+- **Off by default.** It only runs with `EMAIL_OUTREACH_REPLY_SYNC_ENABLED=true` and Gmail credentials set.
 
 ## Run
 
@@ -46,6 +65,10 @@ The backend listens on `http://localhost:8080` by default. Set `SERVER_PORT`, `S
 | `BT_MAIL_USERNAME` / `BT_MAIL_PASSWORD` | Buy Together | SMTP login (for Gmail, the address and an app password) |
 | `BT_MAIL_HOST` / `BT_MAIL_PORT` | Buy Together | SMTP server, default `smtp.gmail.com` / `587` (AWS blocks port 25) |
 | `BT_GOOGLE_CLIENT_ID` | Buy Together | OAuth client id for Google login; Google login is off while empty |
+| `EMAIL_OUTREACH_REPLY_SYNC_ENABLED` | Email outreach | `true` to run the nightly reply job (default `false`) |
+| `EMAIL_OUTREACH_GMAIL_USERNAME` / `EMAIL_OUTREACH_GMAIL_APP_PASSWORD` | Email outreach | Gmail address and app password used for IMAP |
+| `EMAIL_OUTREACH_REPLY_SYNC_CRON` | Email outreach | When the job runs, default `0 0 2 * * *` (2 AM, Asia/Kolkata) |
+| `EMAIL_OUTREACH_DB` | Email outreach | Database holding `email_contacts` and `sync_state`, default `email_outreach` |
 
 ## Build and tests
 

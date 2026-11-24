@@ -107,3 +107,16 @@ buy-together:
       ttl: 30s
   cors:
     allowed-origins: ${BT_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,https://*.vercel.app}
+
+# Email outreach: nightly job that marks contacts RESPONDED when they reply in Gmail
+email-outreach:
+  database: ${EMAIL_OUTREACH_DB:email_outreach}
+  gmail:
+    host: imap.gmail.com
+    port: 993
+    username: ${EMAIL_OUTREACH_GMAIL_USERNAME:}
+    app-password: ${EMAIL_OUTREACH_GMAIL_APP_PASSWORD:}
+  reply-sync:
+    enabled: ${EMAIL_OUTREACH_REPLY_SYNC_ENABLED:false}
+    cron: ${EMAIL_OUTREACH_REPLY_SYNC_CRON:0 0 2 * * *}
+    zone: Asia/Kolkata
