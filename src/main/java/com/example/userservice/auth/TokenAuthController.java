@@ -1,7 +1,7 @@
 package com.example.userservice.auth;
 
 import com.example.userservice.auth.AuthController.LoginRequest;
-import com.example.userservice.auth.AuthService.TokenPair;
+import com.example.userservice.auth.UserAuthService.TokenPair;
 import com.example.userservice.common.ApiResponse;
 import com.example.userservice.common.UserServiceException;
 import com.example.userservice.token.AccessTokenVerifier;
@@ -27,10 +27,10 @@ import java.time.Instant;
 @RequestMapping("/api/users")
 public class TokenAuthController {
 
-    private final AuthService auth;
+    private final UserAuthService auth;
     private final AccessTokenVerifier verifier;
 
-    public TokenAuthController(AuthService auth, AccessTokenVerifier verifier) {
+    public TokenAuthController(UserAuthService auth, AccessTokenVerifier verifier) {
         this.auth = auth;
         this.verifier = verifier;
     }

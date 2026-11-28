@@ -27,7 +27,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class AuthServiceTest {
+class UserAuthServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-11-28T10:00:00Z");
     private static final String PASSWORD = "correct-horse-battery";
@@ -37,12 +37,12 @@ class AuthServiceTest {
     private final PasswordEncoder passwords = new BCryptPasswordEncoder(4);
     private final AccessTokenService accessTokens = mock(AccessTokenService.class);
     private final RefreshTokenService refreshTokens = mock(RefreshTokenService.class);
-    private AuthService auth;
+    private UserAuthService auth;
     private User user;
 
     @BeforeEach
     void setUp() {
-        auth = new AuthService(users, ids, passwords, accessTokens, refreshTokens, 5, Duration.ofMinutes(15),
+        auth = new UserAuthService(users, ids, passwords, accessTokens, refreshTokens, 5, Duration.ofMinutes(15),
                 Clock.fixed(NOW, ZoneOffset.UTC));
         user = new User(42L, "Anmol", "anmol@example.com", passwords.encode(PASSWORD), NOW.minusSeconds(3600));
         when(users.findByEmail("anmol@example.com")).thenReturn(Optional.of(user));
@@ -63,8 +63,8 @@ class AuthServiceTest {
     void unknownEmailAndWrongPasswordLookTheSame() {
         when(users.findByEmail("nobody@example.com")).thenReturn(Optional.empty());
 
-        assertStatus(() -> auth.authenticate("nobody@example.com", PASSWORD), HttpStatus.UNAUTHORIZED, AuthService.INVALID_CREDENTIALS);
-        assertStatus(() -> auth.authenticate("anmol@example.com", "wrong-password"), HttpStatus.UNAUTHORIZED, AuthService.INVALID_CREDENTIALS);
+        assertStatus(() -> auth.authenticate("nobody@example.com", PASSWORD), HttpStatus.UNAUTHORIZED, UserAuthService.INVALID_CREDENTIALS);
+        assertStatus(() -> auth.authenticate("anmol@example.com", "wrong-password"), HttpStatus.UNAUTHORIZED, UserAuthService.INVALID_CREDENTIALS);
     }
 
     @Test
@@ -95,7 +95,7 @@ class AuthServiceTest {
     void accountsWithoutPasswordCannotUsePasswordLogin() {
         user.setPasswordHash(null);
 
-        assertStatus(() -> auth.authenticate("anmol@example.com", PASSWORD), HttpStatus.UNAUTHORIZED, AuthService.INVALID_CREDENTIALS);
+        assertStatus(() -> auth.authenticate("anmol@example.com", PASSWORD), HttpStatus.UNAUTHORIZED, UserAuthService.INVALID_CREDENTIALS);
     }
 
     @Test

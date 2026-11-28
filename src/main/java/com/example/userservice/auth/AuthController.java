@@ -22,10 +22,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/users")
 public class AuthController {
 
-    private final AuthService auth;
+    private final UserAuthService auth;
     private final LegacyTokenService legacyTokens;
 
-    public AuthController(AuthService auth, LegacyTokenService legacyTokens) {
+    public AuthController(UserAuthService auth, LegacyTokenService legacyTokens) {
         this.auth = auth;
         this.legacyTokens = legacyTokens;
     }

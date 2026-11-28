@@ -26,7 +26,7 @@ import java.util.Locale;
  * Registration, password login with temporary lockout, and the token pair every login ends with.
  */
 @Service
-public class AuthService {
+public class UserAuthService {
 
     static final String INVALID_CREDENTIALS = "Invalid email or password";
     /** BCrypt only uses the first 72 bytes of a password, so longer ones are refused. */
@@ -44,13 +44,13 @@ public class AuthService {
     private final String dummyHash;
 
     @Autowired
-    AuthService(UserRepository users, UserIdSequence ids, PasswordEncoder passwords, AccessTokenService accessTokens,
+    UserAuthService(UserRepository users, UserIdSequence ids, PasswordEncoder passwords, AccessTokenService accessTokens,
                 RefreshTokenService refreshTokens, UserServiceProperties properties) {
         this(users, ids, passwords, accessTokens, refreshTokens,
                 properties.login().maxFailedAttempts(), properties.login().lockDuration(), Clock.systemUTC());
     }
 
-    AuthService(UserRepository users, UserIdSequence ids, PasswordEncoder passwords, AccessTokenService accessTokens,
+    UserAuthService(UserRepository users, UserIdSequence ids, PasswordEncoder passwords, AccessTokenService accessTokens,
                 RefreshTokenService refreshTokens, int maxFailedAttempts, Duration lockDuration, Clock clock) {
         this.users = users;
         this.ids = ids;
