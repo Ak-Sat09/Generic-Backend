@@ -60,7 +60,7 @@ public class AccountOtpService {
         Pending existing = pending.getIfPresent(to.key());
         if (existing != null) {
             Duration wait = Duration.between(now, existing.sentAt().plus(settings.resendCooldown()));
-            if (wait.isPositive()) {
+            if (!wait.isNegative() && !wait.isZero()) {
                 throw new UserServiceException(HttpStatus.TOO_MANY_REQUESTS,
                         "Please wait " + Math.max(1, wait.toSeconds()) + " seconds before asking for a new code");
             }
