@@ -18,7 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Starts the whole application (no database needed: MongoDB connects lazily) and checks
  * that the Buy Together module lives under /buy-together without changing the other modules.
  */
-@SpringBootTest(properties = "spring.data.mongodb.auto-index-creation=false")
+@SpringBootTest(properties = {"spring.data.mongodb.auto-index-creation=false", "user-service.jwt.generate-if-missing=true"})
 @AutoConfigureMockMvc
 class UnifiedBackendApplicationTests {
 
@@ -69,5 +69,27 @@ class UnifiedBackendApplicationTests {
         mvc.perform(post("/buy-together/api/auth/google").contentType(MediaType.APPLICATION_JSON).content("{\"credential\":\"x\"}"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value("GOOGLE_LOGIN_DISABLED"));
+    }
+
+    @Test
+    void publishesThePublicKeyForCheckingTokens() throws Exception {
+        mvc.perform(get("/.well-known/jwks.json"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.keys[0].kty").value("RSA"))
+                .andExpect(jsonPath("$.keys[0].alg").value("RS256"));
+    }
+
+    @Test
+    void profileNeedsALogin() throws Exception {
+        mvc.perform(get("/api/users/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void newLoginValidatesItsInput() throws Exception {
+        mvc.perform(post("/api/users/auth/login").contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"not-an-email\",\"password\":\"x\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
     }
 }

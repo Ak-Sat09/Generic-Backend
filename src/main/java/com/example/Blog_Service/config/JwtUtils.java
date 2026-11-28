@@ -1,52 +1,26 @@
 package com.example.Blog_Service.config;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-import java.nio.charset.StandardCharsets;
-import java.security.Key;
-
+import com.example.userservice.token.AccessTokenVerifier;
 import org.springframework.stereotype.Component;
 
+/**
+ * Reads the user id from a token issued by the User Service. All token checks live in
+ * {@link AccessTokenVerifier}, so every module accepts exactly the same tokens.
+ */
 @Component("blogJwtUtils")
 public class JwtUtils {
 
-    public static final String SECRET = "SuperLongHardcodedSecretKeySuperLongHardcodedSecretKeySuperLongHardcodedSecretKey1234567890";
+    private final AccessTokenVerifier verifier;
 
-    private final Key key;
-
-    public JwtUtils() {
-        this.key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+    public JwtUtils(AccessTokenVerifier verifier) {
+        this.verifier = verifier;
     }
 
     public boolean validateToken(String token) {
-        try {
-            Jwts.parser()
-                    .setSigningKey(key)
-                    .build()
-                    .parseClaimsJws(token);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+        return verifier.userId(token).isPresent();
     }
 
     public Long getUserIdFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-
-        Object userIdObj = claims.get("userId");
-        if (userIdObj instanceof Integer) {
-            return ((Integer) userIdObj).longValue();
-        } else if (userIdObj instanceof Long) {
-            return (Long) userIdObj;
-        } else if (userIdObj instanceof String) {
-            return Long.parseLong((String) userIdObj);
-        } else {
-            throw new IllegalStateException("userId claim is missing or invalid");
-        }
+        return verifier.userId(token).orElseThrow(() -> new IllegalStateException("Invalid or expired token"));
     }
 }
