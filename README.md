@@ -25,6 +25,14 @@ The one place for accounts and login. The other modules never create tokens; the
 | POST | `/api/users/auth/logout-all` | header `Authorization: Bearer <access token>` | ends every login of the user |
 | GET | `/api/users/me` | header `Authorization: Bearer <access token>` | the user |
 | GET | `/.well-known/jwks.json` | | the public key for checking access tokens |
+| GET | `/api/users/auth/options` | | which login options are on (`google`, `otp`) |
+| POST | `/api/users/auth/verify-email/send` | header `Authorization`, optional `appUrl` | emails a confirm-email link (also sent after register) |
+| POST | `/api/users/auth/verify-email/confirm` | `token` | marks the email confirmed |
+| POST | `/api/users/auth/password/forgot` | `email`, optional `appUrl` | emails a reset link; same answer whether or not the email exists |
+| POST | `/api/users/auth/password/reset` | `token`, `password` | sets the new password, unlocks and logs out everywhere |
+| POST | `/api/users/auth/otp/send` | `channel` (`phone` or `email`), `destination` | sends a 6 digit code |
+| POST | `/api/users/auth/otp/verify` | `channel`, `destination`, `code`, optional `name` | logs in, creating the account on first use |
+| POST | `/api/users/auth/google` | `credential` (ID token from the Google button) | logs in, creating the account on first use |
 | POST | `/api/users/login` | `email`, `password` | **old login**, kept until the blog and coupon frontends move: a 24 hour HS256 token in `data` |
 
 **How it works:**
@@ -34,6 +42,9 @@ The one place for accounts and login. The other modules never create tokens; the
 - **Lockout.** 5 wrong passwords lock the account for 15 minutes, on the old and the new login. An unknown email and a wrong password get the same answer.
 - **User ids** stay numbers. They come from an atomic counter in the `counters` collection, which starts above the largest existing id.
 - **Blog and Coupon** accept both the new access token and the old token, through the same `AccessTokenVerifier`.
+- **Email links.** Confirm-email (24 hours) and reset-password (30 minutes) links are one-time; only their hash is stored, in `account_tokens`. A link only ever points to a frontend in `USER_LINK_ORIGINS`, so nobody can make the email send people to another site. One email of each kind per account per minute.
+- **One-time codes.** 6 digits, 5 minutes, 60 seconds between sends, 5 wrong tries, kept in memory as hashes. SMS go through Twilio with a daily cap (`USER_SMS_DAILY_LIMIT`, default 100) so a flood of requests can't run up the bill. When the cap is reached, email codes and Google still work.
+- **One account per person.** Email codes and Google find the account by email, phone codes by phone. The first login creates a passwordless account. Email and phone are each unique only when set (partial indexes), so phone-only and email-only accounts can both exist.
 - **CORS.** Only origins in `CORS_ALLOWED_ORIGIN_PATTERNS` (default: localhost and `*.vercel.app`) may call the user, blog and coupon APIs.
 
 **Signing key.** The app does not start without one. Create it once and keep it only on the server:
@@ -102,6 +113,11 @@ The backend listens on `http://localhost:8080` by default. Set `SERVER_PORT`, `S
 | `USER_JWT_PRIVATE_KEY` | User Service | RSA private key (base64 PKCS#8) that signs access tokens. Required |
 | `USER_JWT_GENERATE_IF_MISSING` | User Service | `true` only for local runs without a key (default `false`) |
 | `JWT_SECRET` | User Service | Secret for the old HS256 token, used until the frontends move to the new login. Set your own on the server |
+| `USER_LINK_ORIGINS` | User Service | Frontends email links may open, default Blog, Coupon and `http://localhost:3000` |
+| `USER_MAIL_SENDER` | User Service | `log` or `smtp`; defaults to `BT_EMAIL_OTP_SENDER`. Uses the `spring.mail` (`BT_MAIL_*`) account |
+| `USER_SMS_SENDER` | User Service | `log` or `twilio`; defaults to `BT_OTP_SENDER`. Uses the `BT_TWILIO_*` account |
+| `USER_SMS_DAILY_LIMIT` | User Service | Most SMS codes per day, default 100 |
+| `USER_GOOGLE_CLIENT_ID` | User Service | Google OAuth client id; defaults to `BT_GOOGLE_CLIENT_ID`. Google login is off while empty |
 | `CORS_ALLOWED_ORIGIN_PATTERNS` | All | Frontends allowed to call the APIs, default `http://localhost:*,http://127.0.0.1:*,https://*.vercel.app` |
 | `EMAIL_OUTREACH_GMAIL_USERNAME` / `EMAIL_OUTREACH_GMAIL_APP_PASSWORD` | Email outreach | Gmail used for IMAP. If unset, falls back to `BT_MAIL_USERNAME` / `BT_MAIL_PASSWORD` (the same account) |
 | `EMAIL_OUTREACH_DB` | Email outreach | Database holding `email_contacts` and `sync_state`, default `email_outreach` |
