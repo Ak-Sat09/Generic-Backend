@@ -4,11 +4,45 @@ This is the single Spring Boot backend for all the apps. Each one is built as a 
 
 | Module | Package | Paths |
 |---|---|---|
-| Users: register and login | `com.example.userservice` | `/api/users` |
+| Users: one login for every app | `com.example.userservice` | `/api/users`, `/.well-known/jwks.json` |
 | Blog: blogs, comments, likes, live editing | `com.example.Blog_Service` | `/blogs`, `/comments`, `/likes`, `/share`, WebSocket `/ws` |
 | Coupons: seller and admin workflows, chat | `com.example.CouponVoucherService` | `/api/seller`, `/api/coupons`, `/api/coupon-requests`, `/api/chats`, `/api/admin` |
 | Buy Together: car buyers forming groups | `com.buytogether` | everything under `/buy-together` |
 | Email outreach: nightly reply tracking | `com.example.emailoutreach` | no endpoints, a scheduled job |
+
+## User Service
+
+The one place for accounts and login. The other modules never create tokens; they only ask `AccessTokenVerifier` which user a token belongs to.
+
+**Endpoints** (all answer `{ success, message, data }`):
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| POST | `/api/users/register` | `name`, `email`, `password` (8 to 72 characters) | new user id |
+| POST | `/api/users/auth/login` | `email`, `password` | access token (15 min), refresh token (7 days), user |
+| POST | `/api/users/auth/refresh` | `refreshToken` | a new access token and a new refresh token |
+| POST | `/api/users/auth/logout` | `refreshToken` | ends this login |
+| POST | `/api/users/auth/logout-all` | header `Authorization: Bearer <access token>` | ends every login of the user |
+| GET | `/api/users/me` | header `Authorization: Bearer <access token>` | the user |
+| GET | `/.well-known/jwks.json` | | the public key for checking access tokens |
+| POST | `/api/users/login` | `email`, `password` | **old login**, kept until the blog and coupon frontends move: a 24 hour HS256 token in `data` |
+
+**How it works:**
+
+- **Access tokens** are RS256 JWTs. Only the User Service has the private key; anyone can check a token with the public key from `/.well-known/jwks.json`. They keep the numeric `userId` claim that blogs and coupons already use.
+- **Refresh tokens** are random strings. Only their SHA-256 hash is stored, in `refresh_tokens`, and MongoDB deletes them when they expire. Each refresh returns a new token and retires the old one. If a retired token is used again, it was copied, so that whole login is ended.
+- **Lockout.** 5 wrong passwords lock the account for 15 minutes, on the old and the new login. An unknown email and a wrong password get the same answer.
+- **User ids** stay numbers. They come from an atomic counter in the `counters` collection, which starts above the largest existing id.
+- **Blog and Coupon** accept both the new access token and the old token, through the same `AccessTokenVerifier`.
+- **CORS.** Only origins in `CORS_ALLOWED_ORIGIN_PATTERNS` (default: localhost and `*.vercel.app`) may call the user, blog and coupon APIs.
+
+**Signing key.** The app does not start without one. Create it once and keep it only on the server:
+
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -outform DER | base64 -w0
+```
+
+Put the output in `USER_JWT_PRIVATE_KEY`. For a quick local run without a key, set `USER_JWT_GENERATE_IF_MISSING=true`; tokens then stop working after each restart.
 
 ## Buy Together module
 
@@ -65,6 +99,10 @@ The backend listens on `http://localhost:8080` by default. Set `SERVER_PORT`, `S
 | `BT_MAIL_USERNAME` / `BT_MAIL_PASSWORD` | Buy Together | SMTP login (for Gmail, the address and an app password) |
 | `BT_MAIL_HOST` / `BT_MAIL_PORT` | Buy Together | SMTP server, default `smtp.gmail.com` / `587` (AWS blocks port 25) |
 | `BT_GOOGLE_CLIENT_ID` | Buy Together | OAuth client id for Google login; Google login is off while empty |
+| `USER_JWT_PRIVATE_KEY` | User Service | RSA private key (base64 PKCS#8) that signs access tokens. Required |
+| `USER_JWT_GENERATE_IF_MISSING` | User Service | `true` only for local runs without a key (default `false`) |
+| `JWT_SECRET` | User Service | Secret for the old HS256 token, used until the frontends move to the new login. Set your own on the server |
+| `CORS_ALLOWED_ORIGIN_PATTERNS` | All | Frontends allowed to call the APIs, default `http://localhost:*,http://127.0.0.1:*,https://*.vercel.app` |
 | `EMAIL_OUTREACH_GMAIL_USERNAME` / `EMAIL_OUTREACH_GMAIL_APP_PASSWORD` | Email outreach | Gmail used for IMAP. If unset, falls back to `BT_MAIL_USERNAME` / `BT_MAIL_PASSWORD` (the same account) |
 | `EMAIL_OUTREACH_DB` | Email outreach | Database holding `email_contacts` and `sync_state`, default `email_outreach` |
 
