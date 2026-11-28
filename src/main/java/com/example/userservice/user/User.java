@@ -4,7 +4,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
@@ -23,10 +22,11 @@ public class User {
     @Id
     private Long id;
     private String name;
-    @Indexed(unique = true)
+    /** Unique when present (see {@link AppUserIndexes}); null for phone-only accounts. */
     private String email;
     /** Null for accounts that only log in with OTP or Google. */
     private String passwordHash;
+    /** +91XXXXXXXXXX. Unique when present. */
     private String phone;
     private Boolean emailVerified;
     private UserStatus status;
@@ -46,6 +46,14 @@ public class User {
         this.failedLogins = 0;
         this.createdAt = now;
         this.updatedAt = now;
+    }
+
+    /** An account created by OTP or Google, without a password. */
+    public static User passwordless(Long id, String name, String email, String phone, boolean emailVerified, Instant now) {
+        User user = new User(id, name, email, null, now);
+        user.setPhone(phone);
+        user.setEmailVerified(emailVerified);
+        return user;
     }
 
     public boolean isActive() {

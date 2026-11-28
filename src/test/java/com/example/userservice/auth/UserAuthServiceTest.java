@@ -120,6 +120,29 @@ class UserAuthServiceTest {
         verify(ids, never()).next();
     }
 
+    @Test
+    void emailOtpOrGoogleReusesTheAccountAndConfirmsTheEmail() {
+        auth.loginWithVerifiedEmail("anmol@example.com", "Ignored");
+
+        assertThat(user.isEmailVerified()).isTrue();
+        assertThat(user.getName()).isEqualTo("Anmol");
+        verify(ids, never()).next();
+    }
+
+    @Test
+    void firstPhoneLoginCreatesAPasswordlessAccount() {
+        when(users.findByPhone("+919876543210")).thenReturn(Optional.empty());
+        when(ids.next()).thenReturn(2002L);
+
+        UserAuthService.TokenPair pair = auth.loginWithVerifiedPhone("+919876543210", null);
+
+        assertThat(pair.user().getId()).isEqualTo(2002L);
+        assertThat(pair.user().getPhone()).isEqualTo("+919876543210");
+        assertThat(pair.user().getEmail()).isNull();
+        assertThat(pair.user().getPasswordHash()).isNull();
+        assertThat(pair.user().getName()).isEqualTo("Member");
+    }
+
     private static void assertStatus(Runnable call, HttpStatus status, String messagePart) {
         assertThatThrownBy(call::run)
                 .isInstanceOfSatisfying(UserServiceException.class, e -> {

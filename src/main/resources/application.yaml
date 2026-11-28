@@ -54,6 +54,31 @@ user-service:
   login:
     max-failed-attempts: 5
     lock-duration: 15m
+  links:
+    # frontends that email links (confirm email, reset password) may open; the first is the fallback
+    allowed-origins: ${USER_LINK_ORIGINS:https://chronicle09.vercel.app,https://coupon-voucher-service-frontend.vercel.app,http://localhost:3000}
+    verify-email-ttl: 24h
+    reset-password-ttl: 30m
+    resend-cooldown: 60s
+  mail:
+    # log = print emails in the server log, smtp = send them through spring.mail (same account as the OTP emails)
+    sender: ${USER_MAIL_SENDER:${BT_EMAIL_OTP_SENDER:log}}
+    from: ${USER_MAIL_FROM:${spring.mail.username:}}
+  otp:
+    length: 6
+    ttl: 5m
+    resend-cooldown: 60s
+    max-attempts: 5
+  sms:
+    # log = print SMS in the server log, twilio = send real SMS (same Twilio account as Buy Together)
+    sender: ${USER_SMS_SENDER:${BT_OTP_SENDER:log}}
+    twilio-account-sid: ${BT_TWILIO_ACCOUNT_SID:}
+    twilio-auth-token: ${BT_TWILIO_AUTH_TOKEN:}
+    twilio-from-number: ${BT_TWILIO_FROM_NUMBER:}
+    daily-limit: ${USER_SMS_DAILY_LIMIT:100}
+  google:
+    # OAuth client id from Google Cloud Console; Google login is off while empty
+    client-id: ${USER_GOOGLE_CLIENT_ID:${BT_GOOGLE_CLIENT_ID:}}
 
 app:
   jwt:

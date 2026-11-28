@@ -127,10 +127,44 @@ public class UserAuthService {
         refreshTokens.revokeAll(userId);
     }
 
+    /** Email OTP and Google: the same inbox always opens the same account; a new one is created if needed. */
+    public TokenPair loginWithVerifiedEmail(String email, String nameOnSignUp) {
+        User user = users.findByEmail(email).orElseGet(() -> createPasswordless(nameOnSignUp, email, null));
+        if (!user.isEmailVerified()) {
+            user.setEmailVerified(true); // they just proved they own it
+        }
+        return tokensFor(markLogin(user));
+    }
+
+    public TokenPair loginWithVerifiedPhone(String phone, String nameOnSignUp) {
+        User user = users.findByPhone(phone).orElseGet(() -> createPasswordless(nameOnSignUp, null, phone));
+        return tokensFor(markLogin(user));
+    }
+
     public User get(Long userId) {
         return users.findById(userId)
                 .filter(User::isActive)
                 .orElseThrow(() -> UserServiceException.unauthorized("Please log in again"));
+    }
+
+    private User createPasswordless(String name, String email, String phone) {
+        String displayName = name == null || name.isBlank() ? "Member" : name.trim();
+        try {
+            return users.save(User.passwordless(ids.next(), displayName, email, phone, email != null, clock.instant()));
+        } catch (DuplicateKeyException race) {
+            // the same person logged in twice at once; use the account the other request created
+            return (email != null ? users.findByEmail(email) : users.findByPhone(phone)).orElseThrow(() -> race);
+        }
+    }
+
+    private User markLogin(User user) {
+        if (!user.isActive()) {
+            throw new UserServiceException(HttpStatus.FORBIDDEN, "This account is disabled");
+        }
+        Instant now = clock.instant();
+        user.setLastLoginAt(now);
+        user.setUpdatedAt(now);
+        return users.save(user);
     }
 
     private TokenPair tokensFor(User user) {

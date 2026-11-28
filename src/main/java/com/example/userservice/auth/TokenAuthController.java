@@ -69,9 +69,9 @@ public class TokenAuthController {
     public record RefreshRequest(@NotBlank @Size(max = 200) String refreshToken) {
     }
 
-    public record UserView(Long id, String name, String email, boolean emailVerified, Instant createdAt) {
+    public record UserView(Long id, String name, String email, String phone, boolean emailVerified, Instant createdAt) {
         static UserView from(User user) {
-            return new UserView(user.getId(), user.getName(), user.getEmail(), user.isEmailVerified(), user.getCreatedAt());
+            return new UserView(user.getId(), user.getName(), user.getEmail(), user.getPhone(), user.isEmailVerified(), user.getCreatedAt());
         }
     }
 

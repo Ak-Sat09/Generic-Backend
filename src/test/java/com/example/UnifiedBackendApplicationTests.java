@@ -92,4 +92,17 @@ class UnifiedBackendApplicationTests {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false));
     }
+
+    @Test
+    void loginOptionsAndAccountEndpointsAreWired() throws Exception {
+        mvc.perform(get("/api/users/auth/options"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.google").value(false));
+        mvc.perform(post("/api/users/auth/otp/send").contentType(MediaType.APPLICATION_JSON).content("{\"channel\":\"fax\",\"destination\":\"x\"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/users/auth/google").contentType(MediaType.APPLICATION_JSON).content("{\"credential\":\"x\"}"))
+                .andExpect(status().isServiceUnavailable());
+        mvc.perform(post("/api/users/auth/verify-email/send"))
+                .andExpect(status().isUnauthorized());
+    }
 }
